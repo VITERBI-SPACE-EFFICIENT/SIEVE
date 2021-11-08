@@ -2,10 +2,7 @@ from Viterbi import Sieve
 import numpy as np 
 import random
 
-def create_A_b(n_nodes = 100, sd = 1, edge_per_node = 1): 
-    
-    ''' create very simple stochastic random transition matrix '''
-    
+def create_A_b(n_nodes = 100, sd = 1, prob=0.2): 
     
     np.random.seed(sd) 
     matrix = np.zeros((n_nodes,n_nodes),dtype=float) 
@@ -13,11 +10,13 @@ def create_A_b(n_nodes = 100, sd = 1, edge_per_node = 1):
     
     for state in range(n_nodes): 
         
+        edge_per_node=np.random.binomial(n_nodes-1, p=prob, size=None)
+        
         #we sample @edge_per_node edges to connect to current state 
         state_connections = np.random.choice(allstates, size=edge_per_node)
         
         #sample probabilities  
-        ps = np.random.uniform(0.1,1, size =edge_per_node)
+        ps = np.random.uniform(0.01,1, size=edge_per_node)
         
         for i in range(edge_per_node): 
             connection = state_connections[i]
@@ -27,9 +26,11 @@ def create_A_b(n_nodes = 100, sd = 1, edge_per_node = 1):
     
     # normalize matrix 
     for i in range(n_nodes): 
+        s = np.sum(matrix[i,]) 
         matrix[i,] = matrix[i,] / sum(matrix[i,]) 
+       
                 
-    return matrix            
+    return matrix             
                 
 
 def create_B(n_observables = 100, n_states = 100, sd = 1): 
