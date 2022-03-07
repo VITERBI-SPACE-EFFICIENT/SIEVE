@@ -27,7 +27,8 @@ class Sieve:
         self.K = self.A.shape[0]
         self.B = B 
         self.y = y
-       
+        self.mp_path = [] #middlepath 
+        self.path = [] #sieve 
     
 
     def viterbi(self):
@@ -179,7 +180,6 @@ class Sieve:
         # Iterate throught the observations updating the tracking tables
         for j in range(1, T): 
             
-            print(j)
             T1_current = []
             for i in range(self.K): 
                 T1_current.append(np.max(T1_previous + np.log(self.A[:,i]) + np.log( self.B[i, self.y[j]]) ) )
@@ -196,7 +196,6 @@ class Sieve:
         # go through the checkpoints one by one 
         final_state = None 
         for i_check in reversed(range(len(checkpoints))): 
-            print(i_check)
             
             #initial_state = T2[:,i_check]
             initial_probabilities = T1[:,i_check]
@@ -341,6 +340,131 @@ class Sieve:
     
     
     
+    def BFS_ancestors_middlepath(self, source, indices, b):
+ 
+        ''''
+        Perform single-source BFS traversal of ancestors up to b hops 
+        for SIEVE-Middlepath
+        
+        Parameters: 
+            source: starting node 
+            indices: array (K) sequence of states 
+            b: number of hops ¨
+        '''
+        
+        
+        # Mark all the vertices as not visited
+        visited = set() 
+
+        # Create a queue for BFS
+        queue = []
+ 
+        # Mark the source node as 
+        # visited and enqueue it
+        queue.append(source)
+        queue.append("null") # for level 
+        #visited.add(source)
+        
+        level = 0 
+        
+        A_t = self.A.T
+ 
+        while queue and level < b:
+ 
+            # Dequeue a vertex from 
+            # queue and print it
+            s = queue.pop(0)
+            
+            if s == "null": 
+                level += 1 # you increase one level everytime you encounter a null 
+                queue.append("null") 
+                
+            else: 
+                # Get all adjacent vertices of the
+                # dequeued vertex s. If a adjacent
+                # has not been visited, then mark it
+                # visited and enqueue it
+                for state_idx in  indices: 
+                    
+                    
+                    ''' check this ''' 
+                    
+                    i = A_t[s][state_idx]
+                    
+                    #state_idx = indices[idx]
+                    
+                    #print("state_idx "+ str(state_idxindicesindicesindicesindicesindicesindices))
+                    #print("i " + str(i)) 
+                    
+                    if i > 0: 
+                        
+                        if state_idx not in visited: 
+                            queue.append(state_idx)
+                            visited.add(state_idx)
+     
+        
+        return visited
+        
+    
+    
+    def BFS_descendants_middlepath(self, source, indices,  b):
+ 
+        ''''
+        Perform single-source BFS traversal of ancestors up to b hops 
+        for SIEVE-Middlepath
+        
+        Parameters: 
+            source: starting node 
+            indices: array (K) sequence of states 
+            b: number of hops ¨
+        '''
+        
+        
+        
+        # Mark all the vertices as not visited
+        visited = set() 
+         
+        # Create a queue for BFS
+        queue = []
+ 
+        # Mark the source node as 
+        # visited and enqueue it
+        queue.append(source)
+        queue.append("null") # for level 
+        #visited.add(source)
+        
+        level = 0 
+ 
+        while queue and level < b:
+ 
+            # Dequeue a vertex from 
+            # queue and print it
+            s = queue.pop(0)
+            
+            if s == "null": 
+                level += 1 # you increase one level everytime you encounter a null 
+                queue.append("null") 
+                
+            else: 
+                # Get all adjacent vertices of the
+                # dequeued vertex s. If a adjacent
+                # has not been visited, then mark it
+                # visited and enqueue it
+                for state_idx in indices:
+                    
+                    i = self.A[s][state_idx]
+                                                            
+                    if i > 0: 
+                        
+                        if state_idx not in visited:
+                            queue.append(state_idx)
+                            visited.add(state_idx)
+     
+        return visited
+        
+        
+    
+    
     
     def viterbi_preprocessing_descendants_pruning_root(self, indices, b, K): 
         
@@ -399,7 +523,7 @@ class Sieve:
     
         
     
-    def sieve(self, indices, A, B, y, Pi = None, K = None, root = False, last = None): 
+    def sieve(self, indices, A, B, y, Pi = None, K = None,  last = None): 
         """
         Return the MAP estimate of state trajectory of Hidden Markov Model.
         Implements the space efficient divide and conquer algorithm 
@@ -415,9 +539,12 @@ class Sieve:
         B : array (K, M)
             Emission matrix. See HiddenMarkovModel.emission for details.
         y: array (T,) observation sequence    
-        K: optional, number of states 
         Pi: optional, (K,)
             Initial state probabilities: Pi[i] is the probability x[0] == i. 
+        K: optional, number of states 
+        last: optional (int) 
+              State id of last state 
+        
     
         -------
         print the inorder Viterbi path to standard output 
@@ -450,7 +577,7 @@ class Sieve:
                      
             # Iterate throught the observations updating the tracking tables
             for j in range(1, T): 
-                
+                                
                 # Initialize arrays of current values         
                 new_t1 = [] 
                 new_n = [-1 for _ in range(K)]
@@ -466,7 +593,7 @@ class Sieve:
                     state_maximizer = indices[maximizer]             
                     new_t1.append(this_t1)                         
                     state_i = indices[i]
-                     
+                  
                     prev_median_value = previous_medians_value[maximizer] 
                     
                     n_ancestors = self.b_hop_ancestors[state_maximizer]
@@ -508,7 +635,7 @@ class Sieve:
             if len(y_left) >1: 
                
                 
-                ancestors_source = self.BFS_ancestors( x_a , indices,  N_left)
+                ancestors_source = self.BFS_ancestors( x_a , indices,  N_left-1)
                              
                 states_left_indices =  sorted( list(ancestors_source.union({x_a})) ) 
                 
@@ -518,19 +645,19 @@ class Sieve:
                 B_left = self.B[states_left_indices, :]
                 K_left = len(states_left_indices) 
              
-                out = self.sieve(states_left_indices, A_left, B_left, y_left, Pi = None, K = K_left, last = index_x_a)
+                self.sieve(states_left_indices, A_left, B_left, y_left, Pi = None, K = K_left, last = index_x_a)
                              
             
             N_right = T - N_left 
             y_right = y[-N_right:]
             
             #inorder print of median pairs 
-            print(str(new_medians[last]))
+            self.path.append(new_medians[last])
             
             if len(y_right) >1: 
             
               
-                nodes_to_consider = self.BFS_descendants( x_b , indices,  N_right  )
+                nodes_to_consider = self.BFS_descendants( x_b , indices,  N_right-1)
                 states_right_indices = sorted( list(nodes_to_consider.union({x_b})) ) 
                 
                 A_right = self.A[states_right_indices, :][:, states_right_indices]
@@ -542,30 +669,165 @@ class Sieve:
                         
         
                   
-        return [] 
     
     
     
     
- 
+    def sieve_middlepath(self, indices, A, B, y, Pi = None, K = None,  last = None): 
+        """
+        Return the MAP estimate of state trajectory of Hidden Markov Model.
+        Implements the space efficient divide and conquer algorithm in the case of middle pairs that  
+        split the observation sequence rather than the state space 
+        
+        
+        Parameters
+        ----------
+        indices : array (T,)
+             state sequence.
+        A : array (K, K)
+            State transition matrix. See HiddenMarkovModel.state_transition  for
+            details.
+        B : array (K, M)
+            Emission matrix. See HiddenMarkovModel.emission for details.
+        y: array (T,) observation sequence    
+        Pi: optional, (K,)
+            Initial state probabilities: Pi[i] is the probability x[0] == i. 
+        K: optional, number of states 
+        last: optional (int) 
+              State id of last state 
+        
+    
+        -------
+        print the inorder Viterbi path to standard output 
+        """
+        
+        
+        T = len(y)        
+        
+        
+        if K == None: 
+            K = A.shape[0]
+   
+        if K == 1: 
+            this_out = [] 
+            for i in range(T): 
+                this_out.append(int(indices[0]))  
+            print(  this_out  ) 
+            
+  
+        if K > 1: 
+                                    
+            if self.initial_state!=None: 
+                Pi = np.array([0 if it!=self.initial_state else 1 for it in indices]) # we start from the 
+            Pi = Pi if Pi is not None else np.full(K, 1 / K)
+
+            # Initialize previous values arrays            
+            T1 = np.log( Pi ) + np.log( B[:, y[0]]  )    
+            previous_medians = [-1 for _ in range(K)]
+          
+            # Iterate throught the observations updating the tracking tables
+            for j in range(1, T): 
+                
+                # Initialize arrays of current values         
+                new_t1 = [] 
+                new_medians = [-1 for _ in range(K)]
+                                                
+                for i in range(K): 
+                 
+                     
+                    tmp = T1 + np.log(A[:,i]) + np.log( B[i, y[j]] )
+                    this_t1 = np.max( tmp )                                        
+                    maximizer = np.argmax(tmp)
+                    state_maximizer = indices[maximizer]             
+                    new_t1.append(this_t1)                         
+                    state_i = indices[i]
+                     
+            
+                    if j==floor(T/2): 
+                        
+                        new_medians[i] = (state_maximizer , state_i) 
+                   
+                    elif j>floor(T/2):
+                        
+                        new_medians[i] = previous_medians[maximizer]
+                    
+             
+                # update arrays of previous values 
+                previous_medians = new_medians 
+                T1 = new_t1
+            
+
+            if last == None: 
+                last = np.argmax(T1)
+                
+            # extract median pair 
+            x_a, x_b =  new_medians[last]
+         
+            N_left = floor(T/2)  
+            y_left = y[:N_left] 
+            
+                      
+            if len(y_left) >1: 
+               
+                
+                ancestors_source = self.BFS_ancestors_middlepath( x_a , indices,  N_left-1)
+                             
+                states_left_indices =  sorted( list(ancestors_source.union({x_a})) ) 
+                
+                index_x_a = states_left_indices.index(x_a)
+                                
+                A_left = self.A[states_left_indices, :][:, states_left_indices]
+                B_left = self.B[states_left_indices, :]
+                K_left = len(states_left_indices) 
+             
+                self.sieve_middlepath(states_left_indices, A_left, B_left, y_left, Pi = None, K = K_left, last = index_x_a)
+                             
+            
+            N_right = T - N_left 
+            y_right = y[-N_right:]
+            
+            
+            if len(y_right) <= 1 and len(y_left) <=1 and len(self.mp_path) < len(self.y)-2: 
+                self.mp_path.append( -1, )
+            else:
+                #inorder print of median pairs 
+                self.mp_path.append(new_medians[last])
+            
+            if len(y_right) >1: 
+            
+              
+                nodes_to_consider = self.BFS_descendants_middlepath( x_b , indices,  N_right-1)
+                states_right_indices = sorted( list(nodes_to_consider.union({x_b})) ) 
+                
+                A_right = self.A[states_right_indices, :][:, states_right_indices]
+                B_right = self.B[states_right_indices, :]
+                K_right = len(states_right_indices) 
+            
+                self.initial_state = x_b                                         
+                self.sieve_middlepath(states_right_indices, A_right, B_right, y_right, Pi = None, K = K_right )  # append to the right 
+                
     
     
-    
-    
+    def pretty_print_path(self, path): 
+        ''' print sieve output ''' 
+        if len(path) == 0: 
+            raise ValueError("You must call sieve first")
 
+        output_path = [] 
+        
+        output_path.append(path[0][0])
+        output_path.append(path[0][1])
+        i = 1
+        while len(output_path) <= len(path): 
+            if path[i] == -1 : 
+                output_path.append(path[i+1][0])
+                output_path.append(path[i+1][1])
+                i+=1 
+            else: 
+                output_path.append(path[i][1])
+            i+=1 
 
-
-
-
-
-
-
-
-
-
-
-
-
+        print("Path " + "|" + ",".join(list(map(str, output_path))) + "|")
 
         
     def viterbi_preprocessing_ancestors_pruning_dag(self, indices, y): 
@@ -833,7 +1095,7 @@ class Sieve:
          
             if len(y_left) >1: 
                
-                ancestors_source = self.BFS_ancestors( x_a , indices,  N_left)
+                ancestors_source = self.BFS_ancestors( x_a , indices,  N_left-1)
                
                 states_left_indices =  sorted( list(ancestors_source.union({x_a})) ) 
                 index_x_a = states_left_indices.index(x_a)
@@ -855,7 +1117,7 @@ class Sieve:
                                                   
             if len(y_right) >1: 
             
-                nodes_to_consider = self.BFS_descendants( x_b , indices, N_right  )                
+                nodes_to_consider = self.BFS_descendants( x_b , indices, N_right-1)                
                 states_right_indices = sorted( list(nodes_to_consider.union({x_b})) ) 
                 
                 A_right = self.A[states_right_indices, :][:, states_right_indices]

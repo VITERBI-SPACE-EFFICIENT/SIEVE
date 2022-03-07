@@ -12,3 +12,6 @@ To use the code, if Cython is available, first 'python setup.py build_ext --inpl
 #### Examples 
 
 Run "python example_script.py" to run an example comparing Viterbi and Sieve solution with arbitrary transitions and run "python example_script_dag.py" to run a basic example comparing Viterbi and Sieve solution with DAG transitions. 
+
+
+Note that warnings concerning logarithms can be safely ignored. It is however possible to get rid of them by using np.log1p in place of np.log. 

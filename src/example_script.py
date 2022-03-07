@@ -49,13 +49,13 @@ def create_B(n_observables = 100, n_states = 100, sd = 1):
 if __name__ == '__main__': 
     
         # seed for data generation 
-        sd = 1
+        sd = 12
         # number of observable symbols 
         n_observables = 50
         # number of states 
         K = 100
         random.seed(sd)
-        T = 12
+        T = 14
         # vector of observations 
         y = [random.randint(0,n_observables-1) for _ in range(T)] 
         
@@ -86,10 +86,20 @@ if __name__ == '__main__':
         vit.initial_state = None 
                 
         # prepocessing 
-        
         vit.viterbi_preprocessing_descendants_pruning_root(indices, T, K)
         vit.viterbi_preprocessing_ancestors_pruning_root(indices,  T, K)
-              
-        out = vit.sieve(indices, A, B, y, Pi =pi, K=K, root = True)
+        vit.sieve(indices, A, B, y, Pi =pi, K=K)
+        vit.pretty_print_path(vit.path)
         
         print("Sieve done .. \n" ) 
+        
+        print("Starting Sieve Middle Path.. \n " + "path edges: ") 
+        
+        vit = Sieve(pi, A, B, y)
+        indices = [x for x in range(K)] 
+        pi = np.full(K, 1 / K)
+        vit.initial_state = None 
+              
+        vit.sieve_middlepath(indices, A, B, y, Pi =pi, K=K)
+        vit.pretty_print_path(vit.mp_path)
+        print("Sieve Middlepath done .. \n" ) 
